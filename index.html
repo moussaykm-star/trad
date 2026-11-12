@@ -3,6 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="description" content="مقر justicipy — كهف كريستال ثلاثي الأبعاد بحاسوب وشاشات أسواق وبث الجزيرة المباشر">
+<meta name="theme-color" content="#000308">
+<meta property="og:title" content="مقر justicipy — كهف الكريستال">
 <title>مقر justicipy — كهف الكريستال</title>
 <style>
 :root{color-scheme:dark}
@@ -67,15 +71,19 @@ padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-
 @media (orientation:landscape) and (max-height:520px){
 #pane-yt{flex-direction:row}#bw-player{aspect-ratio:auto;height:100%;flex:1}
 #bw-side{width:210px;overflow:auto;flex-shrink:0}#recent{grid-template-columns:1fr}}
+.aj{height:44px;border:0;border-radius:10px;background:linear-gradient(#e62117,#a8110b);color:#fff;font:700 15px Tajawal,sans-serif;padding:0 16px;margin-top:10px;cursor:pointer}
+#club-btn{position:fixed;top:12px;right:12px;z-index:20;height:42px;padding:0 14px;border-radius:21px;border:1px solid rgba(255,255,255,.25);background:rgba(10,14,30,.7);color:#fff;font:700 14px Tajawal,sans-serif;cursor:pointer;backdrop-filter:blur(6px)}
+#club-btn.on{border-color:#ff3df0;box-shadow:0 0 18px #ff3df0aa,0 0 30px #3df0ff66;background:linear-gradient(90deg,#4a0a5a,#0a3a5a)}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <div id="loading"><div class="spinner"></div><div class="msg">جاري بناء الكهف...</div></div>
 <div id="joy"><div id="joy-knob"></div></div>
-<div id="hint">العصا للحركة • اسحب للنظر • المس الحاسوب لتشغيل يوتيوب • شاشات الأسواق حول الحاسوب</div>
+<div id="hint">العصا للحركة • اسحب للنظر • المس الحاسوب لتشغيل يوتيوب أو الجزيرة • شاشات الأسواق حول الحاسوب</div>
 <div id="snd-hint">🔊 اقترب من الشجرة لسماع القطرات</div>
 <button id="interact-btn">🖥️ استخدم الحاسوب (E)</button>
+<button id="club-btn">🪩 أضواء الملهى (L)</button>
 <div id="fps">-- FPS</div>
 <div id="credit">justicipy</div>
 
@@ -88,7 +96,7 @@ padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-
   </div>
   <div id="pane-yt">
     <div id="bw-player">الصق رابط فيديو يوتيوب في الأعلى ثم اضغط ▶<br>أو اكتب كلمة للبحث في يوتيوب</div>
-    <div id="bw-side"><div class="bw-tools"><button id="bw-ext">↗ فتح في يوتيوب</button><button id="bw-search">🔎 بحث</button><button id="bw-fs">⛶ ملء الشاشة</button><button id="bw-alt">🔁 مشغّل بديل</button><button id="bw-proxy">⚙ بروكسي</button><div id="bw-msg" style="width:100%;font-size:12px;color:#8fb4e0"></div></div><div id="recent"></div></div>
+    <div id="bw-side"><div class="bw-tools"><button id="bw-ajweb">↗ الجزيرة في صفحتهم</button><button id="bw-ext">↗ فتح في يوتيوب</button><button id="bw-search">🔎 بحث</button><button id="bw-fs">⛶ ملء الشاشة</button><button id="bw-alt">🔁 مشغّل بديل</button><button id="bw-proxy">⚙ بروكسي</button><div id="bw-msg" style="width:100%;font-size:12px;color:#8fb4e0"></div></div><div id="recent"></div></div>
   </div>
   <div id="pane-files"><div class="bw-tools"><button id="bw-pick">📁 اختر صوري وفيديوهاتي</button><button id="bw-send">🖥 اعرض على شاشة الكهف</button><button id="bw-ui">⏹ إيقاف</button></div>
     <div id="bw-view"></div><div id="files" style="padding:8px"></div><input type="file" id="bw-input" accept="image/*,video/*,audio/*" multiple hidden></div>
@@ -1000,6 +1008,8 @@ async function buildCave(){
   await yieldToBrowser();
   setupComputer();
   decorateHQ();
+  extraDeco();
+  clubLights();
   try{ royalWall(); }catch(e){ console.error("royal",e); }
   await yieldToBrowser();
 }
@@ -1461,11 +1471,118 @@ function roundRect(ctx, x, y, w, h, r){
 // ═══════════════════════════════════════════════════════════════
 //  AUDIO
 // ═══════════════════════════════════════════════════════════════
+
+let sfxBus = null;
+function buildAmbience(){
+  const c = audioCtx, out = c.createGain(); out.gain.value = .9; out.connect(c.destination);
+  const len = c.sampleRate * 3.2 | 0, ir = c.createBuffer(2, len, c.sampleRate);
+  for (let k = 0; k < 2; k++){ const d = ir.getChannelData(k); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
+  const rev = c.createConvolver(); rev.buffer = ir; const wet = c.createGain(); wet.gain.value = .55; rev.connect(wet); wet.connect(out);
+  sfxBus = c.createGain(); sfxBus.connect(out); sfxBus.connect(rev);
+  const nb = c.createBuffer(1, c.sampleRate * 4, c.sampleRate), nd = nb.getChannelData(0); let b = 0;
+  for (let i = 0; i < nd.length; i++){ b = (b + .02 * (Math.random() * 2 - 1)) / 1.02; nd[i] = b * 3.5; }
+  const ns = c.createBufferSource(); ns.buffer = nb; ns.loop = true;
+  const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 380;
+  const lfo = c.createOscillator(), lg = c.createGain(); lfo.frequency.value = .07; lg.gain.value = 160; lfo.connect(lg); lg.connect(lp.frequency);
+  const ng = c.createGain(); ng.gain.value = .16; ns.connect(lp); lp.connect(ng); ng.connect(out); ng.connect(rev); ns.start(); lfo.start();
+  [55, 55.4, 82.5].forEach((f, i) => { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = f; g.gain.value = i < 2 ? .035 : .012; o.connect(g); g.connect(out); g.connect(rev); o.start(); });
+  const P = [261.6, 293.7, 329.6, 392, 440, 523.3, 587.3, 659.3];
+  (function chime(){
+    if (c.state === 'running'){ const t = c.currentTime, f = P[Math.random() * P.length | 0] * (Math.random() < .3 ? 2 : 1);
+      [1, 2.76, 5.4].forEach((m, k) => { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = f * m;
+        g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.05 / (k + 1), t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + 3.5 / (k + 1));
+        o.connect(g); g.connect(sfxBus); o.start(t); o.stop(t + 3.6); }); }
+    setTimeout(chime, 3500 + Math.random() * 7000); })();
+}
+
+function extraDeco(){
+  const T = THREE, g = new T.Group(), P = deskRef ? deskRef.position : new T.Vector3(8, 0, 14); g.position.copy(P); S.add(g);
+  const glow = makeGlowSprite(), AD = T.AdditiveBlending, cols = [0x44ccff, 0xaa66ff, 0x44ffaa, 0xffaa44];
+  const dark = new T.MeshStandardMaterial({color:0x10151c, roughness:.45, metalness:.85, emissive:0x0a2a40});
+  const ringM = c => new T.MeshBasicMaterial({color:c, transparent:true, opacity:.5, blending:AD, depthWrite:false, side:2});
+  const ring = new T.Mesh(new T.RingGeometry(2.5, 2.62, 64), ringM(0x66ddff)), ring2 = new T.Mesh(new T.RingGeometry(3.2, 3.28, 64), ringM(0xaa66ff));
+  [ring, ring2].forEach(r => { r.rotation.x = -Math.PI / 2; r.position.y = .03; g.add(r); });
+  const rack = new T.Group(), body = new T.Mesh(new T.BoxGeometry(.9, 2.1, .8), dark), leds = []; body.position.y = 1.05; rack.add(body);
+  for (let i = 0; i < 30; i++){ const m = new T.Mesh(new T.BoxGeometry(.05, .03, .02), new T.MeshBasicMaterial({color:cols[i % 4]})); m.position.set(-.3 + (i % 6) * .12, .25 + Math.floor(i / 6) * .36, .41); rack.add(m); leds.push(m); }
+  rack.position.set(-3.6, 0, 1.6); rack.rotation.y = .5; g.add(rack);
+  const lan = []; for (let i = 0; i < 6; i++){ const a = i / 6 * Math.PI * 2, c = cols[i % 4], L = new T.Group();
+    const orb = new T.Mesh(new T.OctahedronGeometry(.16), new T.MeshBasicMaterial({color:c}));
+    const sp = new T.Sprite(new T.SpriteMaterial({map:glow, color:c, transparent:true, blending:AD, depthWrite:false})); sp.scale.setScalar(1.6);
+    const cord = new T.Mesh(new T.CylinderGeometry(.006, .006, 3, 4), new T.MeshBasicMaterial({color:0x223})); cord.position.y = 1.5;
+    L.add(orb, sp, cord); L.position.set(Math.cos(a) * 3.4, 2.6 + (i % 2) * .5, Math.sin(a) * 3.4); g.add(L); lan.push(sp); }
+  for (let i = 0; i < 3; i++){ const sh = new T.Mesh(new T.ConeGeometry(1.4, 9, 24, 1, true), new T.MeshBasicMaterial({color:0x66bbff, transparent:true, opacity:.045, blending:AD, depthWrite:false, side:2}));
+    sh.position.set((i - 1) * 2.2, 4.5, (i % 2 ? 1 : -1) * 1.5); sh.rotation.z = (i - 1) * .12; g.add(sh); }
+  const holo = new T.Mesh(new T.IcosahedronGeometry(.55, 2), new T.MeshBasicMaterial({color:0x66ddff, wireframe:true, transparent:true, opacity:.7, blending:AD, depthWrite:false}));
+  holo.position.set(-2.2, 1.7, -2.2); const ped = new T.Mesh(new T.CylinderGeometry(.35, .45, .9, 24), dark); ped.position.set(-2.2, .45, -2.2); g.add(holo, ped);
+  const N = 240, pp = new Float32Array(N * 3), ph = [];
+  for (let i = 0; i < N; i++){ pp[i * 3] = (Math.random() - .5) * 16; pp[i * 3 + 1] = .4 + Math.random() * 4; pp[i * 3 + 2] = (Math.random() - .5) * 16; ph.push(Math.random() * 6.28); }
+  const pg = new T.BufferGeometry(); pg.setAttribute('position', new T.BufferAttribute(pp, 3));
+  const pts = new T.Points(pg, new T.PointsMaterial({map:glow, color:0x88ddff, size:.28, transparent:true, opacity:.8, blending:AD, depthWrite:false})); pts.frustumCulled = false; g.add(pts);
+  window.__deco = t => {
+    ring.rotation.z = t * .15; ring2.rotation.z = -t * .1; ring.material.opacity = .4 + .2 * Math.sin(t * 1.7);
+    leds.forEach((m, i) => { m.visible = Math.sin(t * (3 + i % 5) + i * 1.7) > -.3; });
+    lan.forEach((sp, i) => { sp.material.opacity = .7 + .3 * Math.sin(t * 2 + i); });
+    holo.rotation.y = t * .5; holo.rotation.x = Math.sin(t * .3) * .2;
+    const a = pg.attributes.position.array; for (let i = 0; i < N; i++){ a[i * 3 + 1] += Math.sin(t * .6 + ph[i]) * .003; a[i * 3] += Math.cos(t * .4 + ph[i]) * .002; }
+    pg.attributes.position.needsUpdate = true; };
+}
+
+
+function clubLights(){
+  const T=THREE, AD=T.AdditiveBlending, g=new T.Group(), P=deskRef?deskRef.position:new T.Vector3(8,0,14), RY=5, N=8, D0=new T.Vector3(0,-1,0);
+  g.position.set(P.x,RY,P.z); g.visible=false; S.add(g);
+  const glow=makeGlowSprite(), fx=[], dir=new T.Vector3(), col=new T.Color();
+  const bar=new T.Mesh(new T.CylinderGeometry(.05,.05,5.4,8),new T.MeshStandardMaterial({color:0x10151c,metalness:.9,roughness:.4})); bar.rotation.z=Math.PI/2; g.add(bar);
+  for(let i=0;i<N;i++){
+    const x=(i-(N-1)/2)*.75, head=new T.Mesh(new T.CylinderGeometry(.09,.14,.22,10),new T.MeshStandardMaterial({color:0x151b24,metalness:.9,roughness:.35}));
+    head.position.set(x,-.08,0); g.add(head);
+    const cg=new T.ConeGeometry(.55,1,28,1,true); cg.translate(0,-.5,0);
+    const beam=new T.Mesh(cg,new T.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.16,blending:AD,depthWrite:false,side:2})); beam.position.set(x,-.15,0); g.add(beam);
+    const spot=new T.Sprite(new T.SpriteMaterial({map:glow,color:0xffffff,transparent:true,blending:AD,depthWrite:false})); spot.scale.setScalar(2.2); g.add(spot);
+    fx.push({x,beam,spot});
+  }
+  const ball=new T.Mesh(new T.IcosahedronGeometry(.42,1),new T.MeshStandardMaterial({color:0xcfd8e8,metalness:1,roughness:.08,flatShading:true,emissive:0x222a3a})); ball.position.set(0,-1.1,0); g.add(ball);
+  const bs=new T.Sprite(new T.SpriteMaterial({map:glow,color:0xffffff,transparent:true,blending:AD,depthWrite:false})); bs.scale.setScalar(2.6); bs.position.copy(ball.position); g.add(bs);
+  const LN=10, lp=new Float32Array(LN*6); for(let i=0;i<LN;i++){lp[i*6+1]=-.2;lp[i*6]=P.x*0;}
+  const lg=new T.BufferGeometry(); lg.setAttribute('position',new T.BufferAttribute(lp,3));
+  const lasers=new T.LineSegments(lg,new T.LineBasicMaterial({color:0x44ff88,transparent:true,opacity:.9,blending:AD,depthWrite:false})); lasers.frustumCulled=false; g.add(lasers);
+  let on=false; const btn=document.getElementById('club-btn');
+  const set=v=>{on=v; g.visible=v; btn.classList.toggle('on',v); try{localStorage.setItem('cave_club',v?'1':'0');}catch(e){}};
+  btn.onclick=()=>set(!on);
+  addEventListener('keydown',e=>{ if(e.code==='KeyL'&&!/INPUT|TEXTAREA/.test((document.activeElement||{}).tagName||'')) set(!on); });
+  try{ if(localStorage.getItem('cave_club')==='1') set(true); }catch(e){}
+  const BPM=124;
+  window.__club=t=>{
+    if(!on) return;
+    const beat=Math.pow(Math.max(0,Math.sin(t*Math.PI*BPM/60)),6), mode=Math.floor(t/9)%4, strobe=(t%18)>16.4?(Math.sin(t*40)>0?1:.1):1;
+    fx.forEach((f,i)=>{
+      const k=i/N, a=t*.9;
+      let tilt,pan;
+      if(mode===0){tilt=.45+.3*Math.sin(a+k*6.28); pan=t*.7+k*6.28;}                 // دوران مروحي
+      else if(mode===1){tilt=.15+.7*Math.abs(Math.sin(a*.8+k*2)); pan=Math.sin(a*.6)*1.6+(k<.5?0:Math.PI);} // مسح يمين ويسار
+      else if(mode===2){tilt=.5+.35*Math.sin(a*1.3+k*3); pan=Math.sin(a+k*4)*Math.cos(a*.5)*3.14;}        // ثمانية
+      else {tilt=.25+.5*beat+.2*Math.sin(a*2+k*9); pan=(i%2?1:-1)*(t*1.4)+k*3;}   // نبض مع الإيقاع
+      dir.set(Math.sin(tilt)*Math.cos(pan),-Math.cos(tilt),Math.sin(tilt)*Math.sin(pan));
+      const len=(RY-.05)/Math.cos(tilt)*.98;
+      f.beam.quaternion.setFromUnitVectors(D0,dir); f.beam.scale.set(1,len,1);
+      col.setHSL((t*.07+(mode%2?k*.5:Math.floor(i/2)*.25))%1,1,.55);
+      f.beam.material.color.copy(col); f.beam.material.opacity=(.1+.2*beat)*strobe;
+      f.spot.material.color.copy(col); f.spot.material.opacity=(.55+.45*beat)*strobe;
+      f.spot.position.set(f.x+dir.x*len,-RY+.06,dir.z*len);
+    });
+    ball.rotation.y=t*.8; bs.material.opacity=.5+.5*beat; col.setHSL((t*.05+.5)%1,1,.6); bs.material.color.copy(col);
+    const a=lg.attributes.position.array;
+    for(let i=0;i<LN;i++){ const ph=t*1.2+i*.63, el=-.5-.45*Math.abs(Math.sin(t*.5+i)), r=6;
+      a[i*6]=0;a[i*6+1]=-.4;a[i*6+2]=0; a[i*6+3]=Math.cos(ph)*Math.cos(el)*r; a[i*6+4]=Math.sin(el)*r; a[i*6+5]=Math.sin(ph)*Math.cos(el)*r; }
+    lg.attributes.position.needsUpdate=true; lasers.material.color.setHSL((t*.1)%1,1,.5); lasers.material.opacity=strobe>.5?.9:.2;
+  };
+}
+
 function initAudio(){
   if (audioCtx) return;
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
-    audioCtx = new AC();
+    audioCtx = new AC(); buildAmbience();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const sh = document.getElementById('snd-hint');
     sh.textContent = '🔊 الصوت يعمل';
@@ -1488,7 +1605,7 @@ function playDripSound(vol){
   gain.gain.setValueAtTime(0.0001, now);
   gain.gain.exponentialRampToValueAtTime(Math.max(0.001, vol), now + 0.005);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-  osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+  osc.connect(filter); filter.connect(gain); gain.connect(sfxBus || audioCtx.destination);
   osc.start(now); osc.stop(now + 0.22);
 }
 
@@ -1524,403 +1641,4 @@ function saveRecent(id){
 function drawRecents(){
   recentEl.innerHTML = '';
   recents().forEach(x => {
-    const c = document.createElement('div'); c.className = 'card';
-    c.innerHTML = '<img loading="lazy" src="https://i.ytimg.com/vi/'+x.id+'/mqdefault.jpg"><span>'+(x.t||x.id)+'</span>';
-    c.onclick = () => playYT({id:x.id});
-    recentEl.appendChild(c);
-    if (!x.t) fetch('https://noembed.com/embed?url='+encodeURIComponent('https://www.youtube.com/watch?v='+x.id)).then(r => r.json()).then(j => {
-      if (!j.title) return; c.lastChild.textContent = j.title;
-      try { const r = recents(); const i = r.findIndex(y => y.id === x.id); if (i > -1){ r[i].t = j.title; localStorage.setItem('cave_yt', JSON.stringify(r)); } } catch(e){}
-    }).catch(()=>{});
-  });
-}
-function playYT(p){
-  cur = p;
-  const o = location.protocol.startsWith('http') ? '&origin='+encodeURIComponent(location.origin) : '';
-  const q = 'autoplay=1&playsinline=1&rel=0&modestbranding=1'+o;
-  const src = p.id ? 'https://www.youtube-nocookie.com/embed/'+p.id+'?'+q+(p.list?'&list='+p.list:'') : 'https://www.youtube-nocookie.com/embed/videoseries?list='+p.list+'&'+q;
-  player.innerHTML = '';
-  const hosts = ['yewtu.be','inv.nadeko.net'];
-  const f = document.createElement('iframe'); f.src = (altN && p.id) ? 'https://'+hosts[(altN-1)%2]+'/embed/'+p.id+'?autoplay=1' : src; f.allowFullscreen = true;
-  f.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope';
-  f.referrerPolicy = 'strict-origin-when-cross-origin'; player.appendChild(f);
-  if (p.id) saveRecent(p.id);
-}
-const msg = t => { $('bw-msg').textContent = t; };
-const SRC = [['p','pipedapi.kavin.rocks'],['p','api.piped.private.coffee'],['i','yewtu.be'],['i','inv.nadeko.net']];
-let altN = 0;
-async function searchYT(q){
-  msg('⏳ جارٍ البحث…'); recentEl.innerHTML = '';
-  for (const [k, h] of SRC){
-    try {
-      const ac = new AbortController(); const tm = setTimeout(() => ac.abort(), 6000);
-      const r = await fetch(k === 'p' ? 'https://'+h+'/search?q='+encodeURIComponent(q)+'&filter=videos' : 'https://'+h+'/api/v1/search?q='+encodeURIComponent(q)+'&type=video', {signal:ac.signal});
-      clearTimeout(tm); const j = await r.json();
-      const list = (k === 'p' ? j.items : j).map(x => ({id: k === 'p' ? (x.url||'').split('v=')[1] : x.videoId, t: x.title})).filter(x => x.id).slice(0, 12);
-      if (!list.length) continue;
-      msg(''); list.forEach(x => { const c = document.createElement('div'); c.className = 'card';
-        c.innerHTML = '<img src="https://i.ytimg.com/vi/'+x.id+'/mqdefault.jpg"><span></span>'; c.lastChild.textContent = x.t; c.onclick = () => playYT({id:x.id}); recentEl.appendChild(c); });
-      return;
-    } catch(e){}
-  }
-  msg('تعذّر البحث داخل الكهف (الخوادم مشغولة). افتح البحث في يوتيوب، ثم الصق رابط الفيديو هنا.'); drawRecents();
-}
-function setTab(t){
-  tab = t; $('pane-files').style.display = t === 'files' ? 'flex' : 'none'; $('tab-files').classList.toggle('on', t === 'files'); $('pane-yt').style.display = t === 'yt' ? 'flex' : 'none'; $('pane-web').style.display = t === 'web' ? 'flex' : 'none';
-  $('tab-yt').classList.toggle('on', t === 'yt'); $('tab-web').classList.toggle('on', t === 'web');
-  if (t === 'web' && !webLoaded){ webLoaded = true; browserFrame.src = 'https://ar.m.wikipedia.org'; }
-}
-function navigate(){
-  const v = browserUrl.value.trim(); if (!v) return;
-  if (tab === 'yt'){
-    const p = parseYT(v);
-    if (p) playYT(p); else searchYT(v);
-  } else { let u = /^https?:\/\//.test(v) ? v : (v.includes('.') && !v.includes(' ') ? 'https://'+v : 'https://ar.m.wikipedia.org/w/index.php?search='+encodeURIComponent(v));
-    let px = ''; try { px = localStorage.getItem('cave_px') || ''; } catch(e){}
-    if (px && /wikipedia\.org\/w\/index\.php\?search=/.test(u)) u = 'https://html.duckduckgo.com/html/?q='+encodeURIComponent(v);
-    browserFrame.src = px ? px.replace(/\/$/, '')+'/?url='+encodeURIComponent(u) : u; }
-}
-function openBrowser(){
-  browserOverlay.style.display = 'flex'; browserOverlay.style.pointerEvents = 'auto';
-  drawRecents(); if (!matchMedia('(pointer:coarse)').matches) setTimeout(() => browserUrl.focus(), 150);
-}
-function closeBrowser(){
-  browserOverlay.style.display = 'none'; browserOverlay.style.pointerEvents = 'none';
-  player.innerHTML = 'الصق رابط فيديو يوتيوب في الأعلى ثم اضغط ▶'; cur = null;
-  if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
-}
-const vid = document.createElement('video'); vid.playsInline = true; vid.controls = true; vid.loop = true;
-let curKind = null, curImg = null; const view = $('bw-view'), filesEl = $('files');
-$('tab-files').onclick = () => setTab('files'); $('bw-pick').onclick = () => $('bw-input').click();
-let list = [], idx = 0;
-$('bw-input').onchange = e => { filesEl.innerHTML = ''; list = [];
-  [...e.target.files].forEach(f => { const url = URL.createObjectURL(f), isV = f.type.startsWith('video') ? 'video' : f.type.startsWith('audio') ? 'audio' : '', c = document.createElement('div'); c.className = 'card';
-    c.innerHTML = isV === 'audio' ? '<div style="aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;font-size:34px">🎵</div><span></span>' : isV ? '<video src="'+url+'#t=0.5" preload="metadata" muted playsinline style="width:100%;aspect-ratio:16/9;object-fit:cover"></video>' : '<img src="'+url+'">';
-    if (isV === 'audio') c.lastChild.textContent = f.name;
-    c.onclick = () => { idx = list.findIndex(m => m.url === url); showMedia(isV, url, f.name); sendNow(); }; filesEl.appendChild(c); list.push({isV, url, name:f.name}); });
-  if (list.length){ idx = 0; showMedia(list[0].isV, list[0].url, list[0].name); sendNow(); } };
-let curName = '';
-function showMedia(isV, url, name){
-  curName = (name || '').replace(/\.[^.]+$/, '');
-  view.innerHTML = '';
-  if (isV){ vid.src = url; vid.play().catch(()=>{}); view.appendChild(vid); }
-  else { vid.pause(); const im = new Image(); im.src = url; im.style.cssText = 'max-width:100%;max-height:55vh'; view.appendChild(im); curImg = im; }
-  curKind = isV || 'image';
-}
-function sendNow(){
-  if (!curKind) return; const k = curKind, go = () => { if (screenSet) screenSet(k, k === 'image' ? curImg : vid); closeBrowser(); };
-  if (k === 'image' && !curImg.complete) curImg.onload = go; else go(); }
-function step(d){ if (list.length < 2) return; idx = (idx + d + list.length) % list.length; showMedia(list[idx].isV, list[idx].url, list[idx].name); sendNow(); }
-$('bw-send').onclick = sendNow;
-$('mprev').onclick = () => step(-1); $('mnext').onclick = () => step(1);
-setInterval(() => { $('mnav').style.display = (computerNear && list.length > 1 && browserOverlay.style.display === 'none') ? 'flex' : 'none'; }, 400);
-$('bw-ui').onclick = () => { vid.pause(); if (screenSet) screenSet('ui'); };
-$('tab-yt').onclick = () => setTab('yt'); $('tab-web').onclick = () => setTab('web');
-$('bw-ext').onclick = () => { const v = browserUrl.value.trim(); const p = cur || parseYT(v);
-  window.open(p && p.id ? 'https://www.youtube.com/watch?v='+p.id : 'https://www.youtube.com/results?search_query='+encodeURIComponent(v), '_blank'); };
-$('bw-aj').onclick = () => { setTab('yt'); browserUrl.value = 'الجزيرة مباشر بث مباشر'; searchYT(browserUrl.value); };
-$('bw-search').onclick = () => window.open('https://www.youtube.com/results?search_query='+encodeURIComponent(browserUrl.value.trim()), '_blank');
-$('bw-alt').onclick = () => { if (!cur) return msg('شغّل فيديو أولاً'); altN = (altN + 1) % 3; playYT(cur); msg(altN ? 'مشغّل بديل '+altN : 'مشغّل يوتيوب الأصلي'); };
-$('bw-proxy').onclick = () => { const v = prompt('رابط بروكسي Cloudflare Worker الخاص بك (فارغ للإلغاء):', localStorage.getItem('cave_px')||''); if (v !== null){ try { localStorage.setItem('cave_px', v.trim()); } catch(e){} } };
-$('bw-fs').onclick = () => { const e = player; (e.requestFullscreen ? e.requestFullscreen() : Promise.reject()).then(() => { try { screen.orientation.lock('landscape').catch(()=>{}); } catch(x){} }).catch(()=>{}); };
-browserGo.addEventListener('click', navigate);
-browserUrl.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); navigate(); } });
-browserClose.addEventListener('click', closeBrowser);
-interactBtn.addEventListener('click', openBrowser);
-
-// ═══════════════════════════════════════════════════════════════
-//  CONTROLS
-// ═══════════════════════════════════════════════════════════════
-let joyX = 0, joyY = 0;
-const keys = {};
-const PLAYER_HEIGHT = 1.7, SPEED = 6;
-const joyEl = document.getElementById('joy');
-const joyKnob = document.getElementById('joy-knob');
-let joyId = null, joyStartX = 0, joyStartY = 0;
-
-joyEl.addEventListener('pointerdown', e => {
-  e.preventDefault(); if (joyId !== null) return;
-  joyId = e.pointerId;
-  const r = joyEl.getBoundingClientRect();
-  joyStartX = r.left + r.width/2; joyStartY = r.top + r.height/2;
-  updateJoy(e.clientX, e.clientY);
-  joyEl.setPointerCapture(e.pointerId);
-});
-joyEl.addEventListener('pointermove', e => { if (e.pointerId === joyId) updateJoy(e.clientX, e.clientY); });
-function endJoy(e){ if (e.pointerId !== joyId) return; joyId = null; joyX = joyY = 0; joyKnob.style.transform = 'translate(0, 0)'; }
-joyEl.addEventListener('pointerup', endJoy);
-joyEl.addEventListener('pointercancel', endJoy);
-function updateJoy(cx, cy){
-  let dx = cx - joyStartX, dy = cy - joyStartY;
-  const dist = Math.sqrt(dx*dx + dy*dy), maxR = 40;
-  if (dist > maxR){ dx = dx/dist*maxR; dy = dy/dist*maxR; }
-  joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
-  joyX = dx/maxR; joyY = dy/maxR;
-}
-let lookId = null, lookX = 0, lookY = 0;
-canvas.addEventListener('pointerdown', e => {
-  if (browserOverlay.style.display !== 'none') return;
-  const r = joyEl.getBoundingClientRect();
-  if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
-  lookId = e.pointerId; lookX = tapX = e.clientX; lookY = tapY = e.clientY;
-  canvas.setPointerCapture(e.pointerId);
-});
-canvas.addEventListener('pointermove', e => {
-  if (e.pointerId !== lookId) return;
-  yaw -= (e.clientX - lookX) * 0.005;
-  pitch -= (e.clientY - lookY) * 0.005;
-  pitch = Math.max(-1.3, Math.min(1.3, pitch));
-  lookX = e.clientX; lookY = e.clientY;
-});
-function endLook(e){
-  if (e.pointerId !== lookId) return; lookId = null;
-  if (e.type === 'pointerup' && computerNear && deskRef && Math.hypot(e.clientX-tapX, e.clientY-tapY) < 8){
-    ray.setFromCamera(new THREE.Vector2(e.clientX/innerWidth*2-1, -(e.clientY/innerHeight)*2+1), cam);
-    if (ray.intersectObject(deskRef, true).length) openBrowser();
-  }
-}
-canvas.addEventListener('pointerup', endLook);
-canvas.addEventListener('pointercancel', endLook);
-window.addEventListener('keydown', e => {
-  keys[e.code] = true;
-  if (e.code === 'KeyE' && computerNear && browserOverlay.style.display === 'none'){
-    e.preventDefault(); openBrowser();
-  }
-  if (e.code === 'Escape' && browserOverlay.style.display !== 'none'){
-    e.preventDefault(); closeBrowser();
-  }
-});
-window.addEventListener('keyup', e => { keys[e.code] = false; });
-
-setTimeout(() => {
-  const h = document.getElementById('hint'); if (h) h.style.opacity = '0';
-}, 5000);
-function resize(){
-  const w = innerWidth, h = innerHeight;
-  R.setSize(w, h, false);
-  cam.aspect = w/h; cam.updateProjectionMatrix();
-}
-addEventListener('resize', resize); resize();
-
-// ═══════════════════════════════════════════════════════════════
-//  FPS
-// ═══════════════════════════════════════════════════════════════
-const fpsEl = document.getElementById('fps');
-let fpsFrames = 0, fpsTimer = 0, lowCount = 0;
-function monitorFPS(dt){
-  fpsFrames++; fpsTimer += dt;
-  if (fpsTimer >= 0.5){
-    const fps = Math.round(fpsFrames / fpsTimer);
-    fpsEl.textContent = fps + ' FPS';
-    fpsEl.style.color = fps >= 45 ? '#88ffcc' : fps >= 25 ? '#ffcc44' : '#ff6666';
-    if (fps < 25 && currentPR > 0.75){
-      lowCount++;
-      if (lowCount >= 3){
-        currentPR = Math.max(0.75, currentPR - 0.25);
-        R.setPixelRatio(currentPR);
-        R.setSize(innerWidth, innerHeight, false);
-        lowCount = 0;
-      }
-    } else lowCount = 0;
-    fpsFrames = 0; fpsTimer = 0;
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  LOOP
-// ═══════════════════════════════════════════════════════════════
-const dummyObj = new THREE.Object3D();
-const CAVE_R = 30, CRYSTAL_AVOID = 5;
-let loadingHidden = false;
-
-function loop(){
-  requestAnimationFrame(loop);
-  const dt = Math.min(clock.getDelta(), 0.05);
-  elapsed += dt;
-  frameCount++;
-  monitorFPS(dt);
-
-  if (browserOverlay.style.display !== 'none') return; // نوفّر الأداء أثناء المشاهدة
-
-  // Player movement
-  const browserOpen = browserOverlay.style.display !== 'none';
-  if (!browserOpen){
-    let mf = -joyY, mr = joyX;
-    if (keys['KeyW'] || keys['ArrowUp']) mf += 1;
-    if (keys['KeyS'] || keys['ArrowDown']) mf -= 1;
-    if (keys['KeyD'] || keys['ArrowRight']) mr += 1;
-    if (keys['KeyA'] || keys['ArrowLeft']) mr -= 1;
-    const mag = Math.sqrt(mf*mf + mr*mr);
-    if (mag > 1){ mf /= mag; mr /= mag; }
-    if (mf !== 0 || mr !== 0){
-      const fwd = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
-      const rgt = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
-      const np = cam.position.clone();
-      np.addScaledVector(fwd, mf * SPEED * dt);
-      np.addScaledVector(rgt, mr * SPEED * dt);
-      np.y = PLAYER_HEIGHT;
-      const d = Math.sqrt(np.x*np.x + np.z*np.z);
-      if (d > CAVE_R){ const a = Math.atan2(np.z, np.x); np.x = Math.cos(a)*CAVE_R; np.z = Math.sin(a)*CAVE_R; }
-      if (d < CRYSTAL_AVOID){ const a = Math.atan2(np.z, np.x); np.x = Math.cos(a)*CRYSTAL_AVOID; np.z = Math.sin(a)*CRYSTAL_AVOID; }
-      cam.position.copy(np);
-    }
-    const euler = new THREE.Euler(pitch, yaw, 0, 'YXZ');
-    cam.quaternion.setFromEuler(euler);
-  }
-
-  // Computer proximity
-  if (computerWorldPos){
-    const d2 = cam.position.distanceTo(computerWorldPos);
-    const wasNear = computerNear;
-    computerNear = d2 < 5;
-    if (computerNear && !wasNear && !browserOpen) interactBtn.style.display = 'block';
-    if ((!computerNear || browserOpen) && interactBtn.style.display !== 'none') interactBtn.style.display = 'none';
-  }
-
-  // Animations
-  if (crystalLight){
-    const pulse = 0.7 + Math.sin(elapsed * 1.2) * 0.3;
-    crystalLight.intensity = 9 + pulse * 5;
-    crystalLight2.intensity = 3 + pulse * 2;
-    crystalMat.emissiveIntensity = 0.6 + pulse * 0.4;
-    crystalHalo.material.opacity = 0.5 + pulse * 0.25;
-    crystalHalo.scale.setScalar(20 + pulse * 6);
-  }
-  if (runeMat) runeMat.opacity = 0.25 + Math.sin(elapsed * 2) * 0.25;
-  if (mushroomCapMat) mushroomCapMat.emissiveIntensity = 1.2 + Math.sin(elapsed * 1.5) * 0.4;
-
-  if (waterNormal){
-    waterNormal.offset.x = elapsed * 0.012;
-    waterNormal.offset.y = elapsed * 0.007;
-    waterMesh.position.y = -0.35 + Math.sin(elapsed * 0.6) * 0.015;
-    treePond.position.y = -0.2 + Math.sin(elapsed * 0.7) * 0.008;
-  }
-
-  if (dustGeo){
-    const dp = dustGeo.attributes.position.array;
-    for (let i = 0; i < dustCount; i++){
-      const d = dustData[i];
-      const t = elapsed * d.speed + d.phase;
-      dp[i*3+1] = d.baseY + Math.sin(t) * d.radius;
-      dp[i*3] += d.driftX * dt; dp[i*3+2] += d.driftZ * dt;
-    }
-    dustGeo.attributes.position.needsUpdate = true;
-  }
-
-  if (wispGeo){
-    const wp = wispGeo.attributes.position.array;
-    for (let i = 0; i < wispCount; i++){
-      const w = wispData[i];
-      w.angle += w.speed * dt * 0.4;
-      wp[i*3] = Math.cos(w.angle)*w.radius + Math.sin(elapsed*0.7+w.yPhase)*1.5;
-      wp[i*3+1] = w.yBase + Math.sin(elapsed*0.9+w.yPhase)*1.5;
-      wp[i*3+2] = Math.sin(w.angle)*w.radius + Math.cos(elapsed*0.6+w.yPhase)*1.5;
-    }
-    wispGeo.attributes.position.needsUpdate = true;
-  }
-
-  if (floatLightGeo){
-    const flp = floatLightGeo.attributes.position.array;
-    for (let i = 0; i < floatLightCount; i++){
-      const u = floatLightData[i];
-      const t = elapsed * u.speed + u.phase;
-      flp[i*3] = u.baseX + Math.sin(t + u.phaseX) * u.radius;
-      flp[i*3+1] = u.baseY + Math.sin(t * 0.7 + u.phaseY) * u.radius * 0.6;
-      flp[i*3+2] = u.baseZ + Math.cos(t + u.phaseZ) * u.radius;
-    }
-    floatLightGeo.attributes.position.needsUpdate = true;
-    floatPointLights.forEach(fl => {
-      const idx = fl.idx;
-      fl.light.position.set(flp[idx*3], flp[idx*3+1], flp[idx*3+2]);
-      fl.light.intensity = 0.35 + Math.sin(elapsed * 2 + idx) * 0.25;
-    });
-  }
-
-  if (treeGroup && treeLeafWorld.length > 0){
-    if (elapsed > nextDropTime){
-      spawnDrop();
-      nextDropTime = elapsed + DROP_MIN + Math.random() * (DROP_MAX - DROP_MIN);
-    }
-    const distToTree = cam.position.distanceTo(treeGroup.position);
-    const proximity = Math.max(0, 1 - distToTree / 30);
-    for (let i = treeDrops.length - 1; i >= 0; i--){
-      const d = treeDrops[i];
-      const u = d.userData;
-      u.vy -= 18 * dt;
-      d.position.y += u.vy * dt;
-      if (d.position.y <= treePondCenter.y + 0.05){
-        const dx = d.position.x - treePondCenter.x;
-        const dz = d.position.z - treePondCenter.z;
-        if (Math.sqrt(dx*dx+dz*dz) < 6){
-          const idx = rippleCursor;
-          rippleCursor = (rippleCursor + 1) % rippleMax;
-          const r = rippleData[idx];
-          r.active = true; r.life = 0;
-          r.x = d.position.x; r.y = treePondCenter.y + 0.02; r.z = d.position.z;
-          if (proximity > 0.03) playDripSound(proximity * proximity * 0.13);
-        }
-        S.remove(d); treeDrops.splice(i, 1);
-      } else if (d.position.y < -1){
-        S.remove(d); treeDrops.splice(i, 1);
-      }
-    }
-  }
-
-  if (rippleInst){
-    for (let i = 0; i < rippleMax; i++){
-      const r = rippleData[i];
-      dummyObj.rotation.set(-Math.PI/2, 0, 0);
-      if (!r.active){
-        dummyObj.position.set(0, -1000, 0);
-        dummyObj.scale.setScalar(0.001);
-        dummyObj.updateMatrix();
-        rippleInst.setMatrixAt(i, dummyObj.matrix);
-        continue;
-      }
-      r.life += dt;
-      const t = r.life / r.maxLife;
-      if (t >= 1){
-        r.active = false;
-        dummyObj.position.set(0, -1000, 0);
-        dummyObj.scale.setScalar(0.001);
-      } else {
-        const eased = 1 - Math.pow(1 - t, 2.5);
-        dummyObj.position.set(r.x, r.y, r.z);
-        dummyObj.scale.setScalar(0.1 + eased * 3.2);
-      }
-      dummyObj.updateMatrix();
-      rippleInst.setMatrixAt(i, dummyObj.matrix);
-    }
-    rippleInst.instanceMatrix.needsUpdate = true;
-  }
-
-  if (beamCone){
-    beamCone.material.opacity = 0.06 + Math.sin(elapsed * 0.7) * 0.015;
-    holeGlow.material.opacity = 0.75 + Math.sin(elapsed * 0.5) * 0.15;
-    treeBeamCone.material.opacity = 0.05 + Math.sin(elapsed * 0.9) * 0.012;
-    treeHoleGlow.material.opacity = 0.7 + Math.sin(elapsed * 0.6) * 0.12;
-  }
-
-  if (updateComputer) updateComputer(elapsed, dt);
-  if (updateHQ) updateHQ(elapsed, dt);
-  if (royalUpdate) royalUpdate(elapsed, dt);
-  R.render(S, cam);
-
-  if (!loadingHidden && frameCount >= 2){
-    loadingHidden = true;
-    loadingEl.classList.add('hidden');
-    setTimeout(() => { loadingEl.style.display = 'none'; }, 800);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════
-//  START
-// ═══════════════════════════════════════════════════════════════
-buildCave().then(() => { loop(); }).catch(err => {
-  console.error('Build failed:', err);
-  setLoadingMsg('خطأ: ' + err.message);
-});
-})();
-</script>
-</body>
-</html>
+    const c = document.createElement('div'); c.classNa
